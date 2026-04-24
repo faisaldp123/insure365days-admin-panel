@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import { useRouter } from "next/navigation";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Navbar from "@/components/Navbar";
 import API from "@/lib/api";
@@ -16,215 +17,199 @@ import {
   Box,
   Button,
   Alert,
+  CircularProgress,
 } from "@mui/material";
 
 export default function Dashboard() {
   const [leads, setLeads] = useState([]);
   const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(true);
+
   const fileRef = useRef();
+  const router = useRouter();
 
   useEffect(() => {
     const token = localStorage.getItem("token");
 
     if (!token) {
-      window.location.href = "/login";
+      router.push("/login");
       return;
     }
 
     fetchLeads();
   }, []);
 
-  // ✅ FETCH LEADS WITH AUTO LOGOUT
+  // ✅ FETCH LEADS
   const fetchLeads = async () => {
     try {
+      setLoading(true);
+
       const res = await API.get("/leads");
-      setLeads(res.data.leads || res.data);
+
+      console.log("API RESPONSE:", res.data);
+
+      setLeads(Array.isArray(res.data) ? res.data : res.data.leads || []);
     } catch (err) {
-      console.log("FULL ERROR:", err);
-      console.log("STATUS:", err.response?.status);
-      console.log("DATA:", err.response?.data);
+      console.log("ERROR:", err.response?.data || err.message);
 
-      // 🔥 AUTO LOGOUT
       if (err.response?.status === 401) {
-        console.log("🚨 Token expired / invalid → logging out");
-
         localStorage.removeItem("token");
-
-        setMessage("Session expired. Please login again.");
-
-        setTimeout(() => {
-          window.location.href = "/login";
-        }, 1500);
+        router.push("/login");
       }
+    } finally {
+      setLoading(false);
     }
   };
 
-  // ✅ UPDATE LEAD WITH AUTO LOGOUT
+  // ✅ UPDATE LEAD
   const updateLead = async (id, field, value) => {
     try {
       await API.put(`/leads/${id}`, { [field]: value });
-      fetchLeads();
     } catch (err) {
       if (err.response?.status === 401) {
         localStorage.removeItem("token");
-        window.location.href = "/login";
-      } else {
-        console.error(err);
+        router.push("/login");
       }
     }
   };
 
-  // ✅ UPLOAD FILE WITH AUTO LOGOUT
+  // ✅ UPLOAD FILE
   const handleUpload = async () => {
     const file = fileRef.current.files[0];
-    if (!file) return alert("Please select file");
+    if (!file) return alert("Select file");
 
     const formData = new FormData();
     formData.append("file", file);
 
     try {
-      await API.post("/leads/upload", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
-
-      setMessage("✅ Leads uploaded successfully!");
-      fileRef.current.value = "";
+      await API.post("/leads/upload", formData);
+      setMessage("✅ Upload successful");
       fetchLeads();
     } catch (err) {
-      if (err.response?.status === 401) {
-        localStorage.removeItem("token");
-        window.location.href = "/login";
-      } else {
-        console.error(err);
-        setMessage("❌ Upload failed");
-      }
+      setMessage("❌ Upload failed");
     }
   };
 
-  // 🎨 STYLE
   const textFieldStyle = {
     input: { color: "#fff" },
-    label: { color: "#fff" },
     "& .MuiOutlinedInput-root": {
       "& fieldset": { borderColor: "#fff" },
-      "&:hover fieldset": { borderColor: "#fff" },
-      "&.Mui-focused fieldset": { borderColor: "#fff" },
     },
-    "& .MuiSvgIcon-root": { color: "#fff" },
   };
 
   return (
     <ProtectedRoute>
       <Navbar />
 
-      <Box p={3} sx={{ backgroundColor: "#000", minHeight: "100vh" }}>
+      <Box p={3} sx={{ background: "#000", minHeight: "100vh" }}>
         
-        {/* ✅ UPLOAD SECTION */}
+        {/* Upload */}
         <Box mb={3}>
           <input type="file" ref={fileRef} />
-          <Button variant="contained" sx={{ ml: 2 }} onClick={handleUpload}>
-            Upload Excel
+          <Button sx={{ ml: 2 }} variant="contained" onClick={handleUpload}>
+            Upload
           </Button>
         </Box>
 
-        {/* ✅ MESSAGE */}
-        {message && (
-          <Alert
-            severity={message.includes("success") ? "success" : "error"}
-            onClose={() => setMessage("")}
-            sx={{ mb: 2 }}
-          >
-            {message}
-          </Alert>
-        )}
+        {message && <Alert sx={{ mb: 2 }}>{message}</Alert>}
 
-        {/* ✅ TABLE */}
-        <Table sx={{ backgroundColor: "#000" }}>
-          <TableHead>
-            <TableRow>
-              <TableCell sx={{ color: "#fff" }}>Name</TableCell>
-              <TableCell sx={{ color: "#fff" }}>Mobile</TableCell>
-              <TableCell sx={{ color: "#fff" }}>Email</TableCell>
-              <TableCell sx={{ color: "#fff" }}>Status</TableCell>
-              <TableCell sx={{ color: "#fff" }}>Call Status</TableCell>
-              <TableCell sx={{ color: "#fff" }}>Feedback</TableCell>
-            </TableRow>
-          </TableHead>
+        {/* Loader */}
+        {loading ? (
+          <Box textAlign="center">
+            <CircularProgress />
+          </Box>
+        ) : (
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell sx={{ color: "#fff" }}>Name</TableCell>
+                <TableCell sx={{ color: "#fff" }}>Mobile</TableCell>
+                <TableCell sx={{ color: "#fff" }}>Email</TableCell>
+                <TableCell sx={{ color: "#fff" }}>Status</TableCell>
+                <TableCell sx={{ color: "#fff" }}>Call Status</TableCell>
+                <TableCell sx={{ color: "#fff" }}>Feedback</TableCell>
+              </TableRow>
+            </TableHead>
 
-          <TableBody>
-            {leads.length > 0 ? (
-              leads.map((lead) => (
-                <TableRow key={lead._id}>
-                  <TableCell sx={{ color: "#fff" }}>{lead.name}</TableCell>
-                  <TableCell sx={{ color: "#fff" }}>{lead.mobile}</TableCell>
-                  <TableCell sx={{ color: "#fff" }}>
-                    {lead.email || "-"}
-                  </TableCell>
+            <TableBody>
+              {leads.length > 0 ? (
+                leads.map((lead) => (
+                  <TableRow key={lead._id}>
+                    <TableCell sx={{ color: "#fff" }}>{lead.name}</TableCell>
+                    <TableCell sx={{ color: "#fff" }}>{lead.mobile}</TableCell>
+                    <TableCell sx={{ color: "#fff" }}>
+                      {lead.email || "-"}
+                    </TableCell>
 
-                  {/* STATUS */}
-                  <TableCell>
-                    <TextField
-                      select
-                      value={lead.status || "new"}
-                      onChange={(e) =>
-                        updateLead(lead._id, "status", e.target.value)
-                      }
-                      sx={textFieldStyle}
-                      size="small"
-                    >
-                      <MenuItem value="new">New</MenuItem>
-                      <MenuItem value="interested">Interested</MenuItem>
-                      <MenuItem value="not_interested">
-                        Not Interested
-                      </MenuItem>
-                      <MenuItem value="follow_up">Follow Up</MenuItem>
-                    </TextField>
-                  </TableCell>
+                    {/* STATUS */}
+                    <TableCell>
+                      <TextField
+                        select
+                        value={lead.status || "new"}
+                        onChange={(e) =>
+                          updateLead(lead._id, "status", e.target.value)
+                        }
+                        sx={textFieldStyle}
+                        size="small"
+                      >
+                        <MenuItem value="new">New</MenuItem>
+                        <MenuItem value="interested">Interested</MenuItem>
+                        <MenuItem value="not_interested">
+                          Not Interested
+                        </MenuItem>
+                        <MenuItem value="follow_up">Follow Up</MenuItem>
+                      </TextField>
+                    </TableCell>
 
-                  {/* CALL STATUS */}
-                  <TableCell>
-                    <TextField
-                      select
-                      value={lead.callStatus || "pending"}
-                      onChange={(e) =>
-                        updateLead(lead._id, "callStatus", e.target.value)
-                      }
-                      sx={textFieldStyle}
-                      size="small"
-                    >
-                      <MenuItem value="pending">Pending</MenuItem>
-                      <MenuItem value="picked">Picked</MenuItem>
-                      <MenuItem value="not_picked">
-                        Not Picked
-                      </MenuItem>
-                    </TextField>
-                  </TableCell>
+                    {/* CALL STATUS */}
+                    <TableCell>
+                      <TextField
+                        select
+                        value={lead.callStatus || "pending"}
+                        onChange={(e) =>
+                          updateLead(
+                            lead._id,
+                            "callStatus",
+                            e.target.value
+                          )
+                        }
+                        sx={textFieldStyle}
+                        size="small"
+                      >
+                        <MenuItem value="pending">Pending</MenuItem>
+                        <MenuItem value="picked">Picked</MenuItem>
+                        <MenuItem value="not_picked">Not Picked</MenuItem>
+                      </TextField>
+                    </TableCell>
 
-                  {/* FEEDBACK */}
-                  <TableCell>
-                    <TextField
-                      value={lead.feedback || ""}
-                      onChange={(e) =>
-                        updateLead(lead._id, "feedback", e.target.value)
-                      }
-                      sx={textFieldStyle}
-                      size="small"
-                      fullWidth
-                    />
+                    {/* FEEDBACK (FIXED 🔥) */}
+                    <TableCell>
+                      <TextField
+                        defaultValue={lead.feedback || ""}
+                        onBlur={(e) =>
+                          updateLead(
+                            lead._id,
+                            "feedback",
+                            e.target.value
+                          )
+                        }
+                        sx={textFieldStyle}
+                        size="small"
+                        fullWidth
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={6} align="center" sx={{ color: "#fff" }}>
+                    No leads found
                   </TableCell>
                 </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={6} sx={{ color: "#fff", textAlign: "center" }}>
-                  No leads found
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+              )}
+            </TableBody>
+          </Table>
+        )}
       </Box>
     </ProtectedRoute>
   );
