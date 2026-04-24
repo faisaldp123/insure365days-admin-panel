@@ -15,9 +15,12 @@ export default function Login() {
 
   // ✅ If already logged in → redirect
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (token) router.push("/dashboard");
-  }, []);
+  const token = localStorage.getItem("token");
+
+  if (token && window.location.pathname === "/login") {
+    router.replace("/dashboard");
+  }
+}, []);
 
   const handleLogin = async () => {
     try {

@@ -5,20 +5,29 @@ import { useRouter } from "next/navigation";
 
 export default function ProtectedRoute({ children }) {
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
+  const [isAuth, setIsAuth] = useState(null); // null = checking
 
   useEffect(() => {
     const token = localStorage.getItem("token");
 
     if (!token) {
-      router.push("/login");
+      router.replace("/login"); // ✅ important
+      setIsAuth(false);
     } else {
-      setLoading(false);
+      setIsAuth(true);
     }
   }, []);
 
-  // ⛔ Don't render anything until check completes
-  if (loading) return null;
+  // ⏳ While checking auth
+  if (isAuth === null) {
+    return <p style={{ textAlign: "center" }}>Loading...</p>;
+  }
 
+  // ❌ Not authenticated
+  if (!isAuth) {
+    return null;
+  }
+
+  // ✅ Authenticated
   return children;
 }
