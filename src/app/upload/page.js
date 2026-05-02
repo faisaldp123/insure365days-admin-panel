@@ -21,10 +21,17 @@ export default function Upload() {
     <ProtectedRoute>
       <Navbar />
 
-      <Box p={3}>
-        <input type="file" onChange={(e) => setFile(e.target.files[0])} />
+      <Box p={3} mt={12}>
+        <input
+          type="file"
+          onChange={(e) => setFile(e.target.files[0])}
+        />
 
-        <Button variant="contained" onClick={handleUpload}>
+        <Button
+          variant="contained"
+          onClick={handleUpload}
+          sx={{ mt: 3 }}   // ✅ margin added here
+        >
           Upload Excel
         </Button>
       </Box>
