@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Navbar from "@/components/Navbar";
 import API from "@/lib/api";
@@ -8,8 +8,12 @@ import API from "@/lib/api";
 import {
   Table, TableHead, TableRow, TableCell, TableBody,
   TextField, MenuItem, Box, Button, Alert,
-  Select, Pagination
+  Select, Pagination, Dialog, DialogTitle, DialogContent,
+  DialogActions, Typography
 } from "@mui/material";
+
+import DownloadIcon from "@mui/icons-material/Download";
+import FilterListIcon from "@mui/icons-material/FilterList";
 
 export default function Dashboard() {
   const [leads, setLeads] = useState([]);
@@ -20,73 +24,54 @@ export default function Dashboard() {
   const [dateFilter, setDateFilter] = useState("");
 
   const [page, setPage] = useState(1);
-  const rowsPerPage = 8;
+  const rowsPerPage = 10; // ✅ 10 per page
 
-  const fileRef = useRef();
+  // Download modal
+  const [downloadOpen, setDownloadOpen] = useState(false);
+  const [dlFromDate, setDlFromDate] = useState("");
+  const [dlToDate, setDlToDate] = useState("");
+  const [dlStatus, setDlStatus] = useState("");
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      window.location.href = "/login";
-      return;
-    }
     fetchLeads();
   }, []);
+
+  // ✅ Reset page when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [search, statusFilter, dateFilter]);
 
   const fetchLeads = async () => {
     try {
       const res = await API.get("/leads");
-      setLeads(Array.isArray(res.data) ? res.data : res.data.leads || []);
+      const data = Array.isArray(res.data) ? res.data : res.data.leads || [];
+      setLeads(data);
     } catch (err) {
-      if (err.response?.status === 401) {
-        localStorage.removeItem("token");
-        window.location.href = "/login";
-      }
+      console.error(err);
     }
   };
 
-  // ✅ FIX: instant UI update
   const updateLead = async (id, field, value) => {
     try {
       await API.put(`/leads/${id}`, { [field]: value });
-
       setLeads((prev) =>
         prev.map((lead) =>
           lead._id === id ? { ...lead, [field]: value } : lead
         )
       );
     } catch {
-      localStorage.removeItem("token");
-      window.location.href = "/login";
+      console.error("Update failed");
     }
   };
 
-  const handleUpload = async () => {
-    const file = fileRef.current.files[0];
-    if (!file) return alert("Select file");
-
-    const formData = new FormData();
-    formData.append("file", file);
-
-    try {
-      await API.post("/leads/upload", formData);
-      setMessage("✅ Uploaded successfully");
-      fetchLeads();
-    } catch {
-      setMessage("❌ Upload failed");
-    }
-  };
-
-  // ✅ FILTER
+  // FILTER TABLE
   const filteredLeads = useMemo(() => {
     return leads.filter((lead) => {
       const matchSearch =
         lead.name?.toLowerCase().includes(search.toLowerCase()) ||
         lead.mobile?.includes(search);
 
-      const matchStatus = statusFilter
-        ? lead.status === statusFilter
-        : true;
+      const matchStatus = statusFilter ? lead.status === statusFilter : true;
 
       const matchDate = dateFilter
         ? new Date(lead.createdAt).toDateString() ===
@@ -97,10 +82,66 @@ export default function Dashboard() {
     });
   }, [leads, search, statusFilter, dateFilter]);
 
+  // ✅ Pagination logic
+  const totalPages = Math.max(1, Math.ceil(filteredLeads.length / rowsPerPage));
+
   const paginatedLeads = filteredLeads.slice(
     (page - 1) * rowsPerPage,
     page * rowsPerPage
   );
+
+  // DOWNLOAD FILTER
+  const getDownloadLeads = () => {
+    return leads.filter((lead) => {
+      const matchStatus = dlStatus ? lead.status === dlStatus : true;
+
+      const leadDate = new Date(lead.createdAt);
+      const from = dlFromDate ? new Date(dlFromDate + "T00:00:00") : null;
+      const to = dlToDate ? new Date(dlToDate + "T23:59:59") : null;
+
+      return (!from || leadDate >= from) && (!to || leadDate <= to) && matchStatus;
+    });
+  };
+
+  // DOWNLOAD FUNCTION
+  const handleDownload = () => {
+    const data = getDownloadLeads();
+
+    if (data.length === 0) {
+      alert("No leads found");
+      return;
+    }
+
+    const headers = ["Name", "Mobile", "Status", "Call", "Feedback", "Date"];
+
+    const rows = data.map((l) => [
+      l.name || "",
+      l.mobile || "",
+      l.status || "",
+      l.callStatus || "",
+      l.feedback || "",
+      l.createdAt ? new Date(l.createdAt).toLocaleString() : "",
+    ]);
+
+    const csv =
+      "\uFEFF" +
+      [headers, ...rows]
+        .map((r) => r.map((c) => `"${c}"`).join(","))
+        .join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+
+    const fileName = `leads_${dlStatus || "all"}_${dlFromDate || "start"}_${dlToDate || "end"}.csv`;
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName;
+    a.click();
+
+    URL.revokeObjectURL(url);
+    setDownloadOpen(false);
+  };
 
   const selectStyle = {
     color: "#fff",
@@ -108,12 +149,19 @@ export default function Dashboard() {
     "& .MuiSvgIcon-root": { color: "#fff" },
   };
 
+  const STATUS_OPTIONS = [
+    { value: "", label: "All Status" },
+    { value: "new", label: "New" },
+    { value: "interested", label: "Interested" },
+    { value: "not_interested", label: "Not Interested" },
+    { value: "follow_up", label: "Follow Up" },
+  ];
+
   return (
     <ProtectedRoute>
       <Navbar />
 
-      {/* ✅ FIX: proper spacing */}
-      <Box sx={{ p: 3, mt: 6, background: "#000", minHeight: "100vh" }}>
+      <Box sx={{ p: 3, mt: 5, background: "#000", minHeight: "100vh" }}>
 
         {/* HEADER */}
         <Box
@@ -126,16 +174,7 @@ export default function Dashboard() {
             mb: 3,
           }}
         >
-
-          {/* LEFT */}
-          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-            <input type="file" ref={fileRef} />
-            <Button variant="contained" onClick={handleUpload}>
-              Upload Excel
-            </Button>
-          </Box>
-
-          {/* RIGHT */}
+          {/* LEFT FILTERS */}
           <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
             <TextField
               placeholder="Search"
@@ -148,15 +187,14 @@ export default function Dashboard() {
             <Select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              displayEmpty
               size="small"
               sx={selectStyle}
             >
-              <MenuItem value="">All Status</MenuItem>
-              <MenuItem value="new">New</MenuItem>
-              <MenuItem value="interested">Interested</MenuItem>
-              <MenuItem value="not_interested">Not Interested</MenuItem>
-              <MenuItem value="follow_up">Follow Up</MenuItem>
+              {STATUS_OPTIONS.map((opt) => (
+                <MenuItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </MenuItem>
+              ))}
             </Select>
 
             <TextField
@@ -167,9 +205,18 @@ export default function Dashboard() {
               sx={{ input: { color: "#fff" } }}
             />
           </Box>
+
+          {/* RIGHT DOWNLOAD */}
+          <Button
+            variant="contained"
+            startIcon={<DownloadIcon />}
+            onClick={() => setDownloadOpen(true)}
+          >
+            Download Leads
+          </Button>
         </Box>
 
-        {message && <Alert sx={{ mb: 2 }}>{message}</Alert>}
+        {message && <Alert>{message}</Alert>}
 
         {/* TABLE */}
         <Table>
@@ -223,18 +270,11 @@ export default function Dashboard() {
                 <TableCell>
                   <TextField
                     defaultValue={lead.feedback || ""}
-                    placeholder="Add feedback"
                     onBlur={(e) =>
                       updateLead(lead._id, "feedback", e.target.value)
                     }
                     size="small"
-                    sx={{
-                      input: { color: "#fff" },
-                      "& input::placeholder": {
-                        color: "#fff",
-                        opacity: 0.7,
-                      },
-                    }}
+                    sx={{ input: { color: "#fff" } }}
                   />
                 </TableCell>
               </TableRow>
@@ -243,14 +283,68 @@ export default function Dashboard() {
         </Table>
 
         {/* PAGINATION */}
-        <Box sx={{ mt: 3, display: "flex", justifyContent: "center" }}>
+        <Box
+          sx={{
+            mt: 3,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 1,
+          }}
+        >
+          <Typography sx={{ color: "#aaa" }}>
+            Showing {paginatedLeads.length} of {filteredLeads.length} leads
+          </Typography>
+
           <Pagination
-            count={Math.ceil(filteredLeads.length / rowsPerPage)}
+            count={totalPages}
             page={page}
             onChange={(e, value) => setPage(value)}
+            color="primary"
+            shape="rounded"
           />
         </Box>
       </Box>
+
+      {/* DOWNLOAD MODAL */}
+      <Dialog open={downloadOpen} onClose={() => setDownloadOpen(false)}>
+        <DialogTitle>
+          <FilterListIcon /> Download Leads
+        </DialogTitle>
+
+        <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          <Select value={dlStatus} onChange={(e) => setDlStatus(e.target.value)}>
+            {STATUS_OPTIONS.map((opt) => (
+              <MenuItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </MenuItem>
+            ))}
+          </Select>
+
+          <TextField
+            type="date"
+            label="From"
+            value={dlFromDate}
+            onChange={(e) => setDlFromDate(e.target.value)}
+            InputLabelProps={{ shrink: true }}
+          />
+
+          <TextField
+            type="date"
+            label="To"
+            value={dlToDate}
+            onChange={(e) => setDlToDate(e.target.value)}
+            InputLabelProps={{ shrink: true }}
+          />
+        </DialogContent>
+
+        <DialogActions>
+          <Button onClick={() => setDownloadOpen(false)}>Cancel</Button>
+          <Button onClick={handleDownload} variant="contained">
+            Download
+          </Button>
+        </DialogActions>
+      </Dialog>
     </ProtectedRoute>
   );
 }
