@@ -34,6 +34,10 @@ export default function Navbar() {
           Dashboard
         </Button>
 
+        <Button color="inherit" onClick={() => router.push("/contacts")}>
+          New Leads
+        </Button>
+
         {role === "admin" && (
           <>
             <Button color="inherit" onClick={() => router.push("/upload")}>
