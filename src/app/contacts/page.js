@@ -37,7 +37,6 @@ export default function ContactsPage() {
     }
   };
 
-  // FILTER
   const filteredContacts = useMemo(() => {
     return contacts.filter((c) => {
       const matchSearch =
@@ -65,26 +64,37 @@ export default function ContactsPage() {
     <ProtectedRoute>
       <Navbar />
 
-      <Box sx={{ p: 3, mt: 5, background: "#000", minHeight: "100vh" }}>
+      <Box sx={{ p: { xs: 2, md: 3 }, mt: 5, background: "#000", minHeight: "100vh" }}>
 
         {/* HEADER */}
         <Box
           sx={{
             display: "flex",
+            flexDirection: { xs: "column", md: "row" },
             justifyContent: "space-between",
-            flexWrap: "wrap",
             gap: 2,
             mb: 3,
           }}
         >
           {/* FILTERS */}
-          <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: { xs: "column", sm: "row" },
+              gap: 2,
+              width: { xs: "100%", md: "auto" },
+            }}
+          >
             <TextField
               placeholder="Search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               size="small"
-              sx={{ input: { color: "#fff" } }}
+              fullWidth
+              sx={{
+                input: { color: "#fff" },
+                width: { md: "200px" },
+              }}
             />
 
             <TextField
@@ -92,37 +102,43 @@ export default function ContactsPage() {
               value={dateFilter}
               onChange={(e) => setDateFilter(e.target.value)}
               size="small"
-              sx={{ input: { color: "#fff" } }}
+              fullWidth
+              sx={{
+                input: { color: "#fff" },
+                width: { md: "180px" },
+              }}
             />
           </Box>
         </Box>
 
-        {/* TABLE */}
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell sx={{ color: "#fff" }}>Name</TableCell>
-              <TableCell sx={{ color: "#fff" }}>Email</TableCell>
-              <TableCell sx={{ color: "#fff" }}>Mobile</TableCell>
-              <TableCell sx={{ color: "#fff" }}>Message</TableCell>
-              <TableCell sx={{ color: "#fff" }}>Date</TableCell>
-            </TableRow>
-          </TableHead>
-
-          <TableBody>
-            {paginatedContacts.map((c) => (
-              <TableRow key={c._id}>
-                <TableCell sx={{ color: "#fff" }}>{c.name}</TableCell>
-                <TableCell sx={{ color: "#fff" }}>{c.email}</TableCell>
-                <TableCell sx={{ color: "#fff" }}>{c.mobile}</TableCell>
-                <TableCell sx={{ color: "#fff" }}>{c.message}</TableCell>
-                <TableCell sx={{ color: "#fff" }}>
-                  {new Date(c.createdAt).toLocaleString()}
-                </TableCell>
+        {/* TABLE WRAPPER */}
+        <Box sx={{ overflowX: "auto" }}>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell sx={{ color: "#fff" }}>Name</TableCell>
+                <TableCell sx={{ color: "#fff" }}>Email</TableCell>
+                <TableCell sx={{ color: "#fff" }}>Mobile</TableCell>
+                <TableCell sx={{ color: "#fff" }}>Message</TableCell>
+                <TableCell sx={{ color: "#fff" }}>Date</TableCell>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHead>
+
+            <TableBody>
+              {paginatedContacts.map((c) => (
+                <TableRow key={c._id}>
+                  <TableCell sx={{ color: "#fff" }}>{c.name}</TableCell>
+                  <TableCell sx={{ color: "#fff" }}>{c.email}</TableCell>
+                  <TableCell sx={{ color: "#fff" }}>{c.mobile}</TableCell>
+                  <TableCell sx={{ color: "#fff" }}>{c.message}</TableCell>
+                  <TableCell sx={{ color: "#fff" }}>
+                    {new Date(c.createdAt).toLocaleString()}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Box>
 
         {/* PAGINATION */}
         <Box
@@ -142,8 +158,17 @@ export default function ContactsPage() {
             count={totalPages}
             page={page}
             onChange={(e, value) => setPage(value)}
-            color="primary"
             shape="rounded"
+            sx={{
+              "& .MuiPaginationItem-root": {
+                color: "#fff",
+                border: "1px solid #555",
+              },
+              "& .Mui-selected": {
+                backgroundColor: "#1976d2",
+                color: "#fff",
+              },
+            }}
           />
         </Box>
       </Box>
