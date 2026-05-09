@@ -1,9 +1,20 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Box, TextField, Button, Paper, Typography } from "@mui/material";
+import {
+  Box,
+  TextField,
+  Button,
+  Paper,
+  Typography,
+  IconButton,
+  InputAdornment,
+} from "@mui/material";
 import { useRouter } from "next/navigation";
 import API from "@/lib/api";
+
+import Visibility from "@mui/icons-material/Visibility";
+import VisibilityOff from "@mui/icons-material/VisibilityOff";
 
 export default function Login() {
   const router = useRouter();
@@ -13,14 +24,15 @@ export default function Login() {
     password: "",
   });
 
-  // ✅ If already logged in → redirect
-  useEffect(() => {
-  const token = localStorage.getItem("token");
+  const [showPassword, setShowPassword] = useState(false);
 
-  if (token && window.location.pathname === "/login") {
-    router.replace("/dashboard");
-  }
-}, []);
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+
+    if (token && window.location.pathname === "/login") {
+      router.replace("/dashboard");
+    }
+  }, []);
 
   const handleLogin = async () => {
     try {
@@ -38,18 +50,45 @@ export default function Login() {
   return (
     <Box
       sx={{
-        height: "100vh",              // full height
+        minHeight: "100dvh",
         display: "flex",
-        justifyContent: "center",     // horizontal center
-        alignItems: "center",         // vertical center
-        backgroundColor: "#f5f5f5",
+        justifyContent: "center",
+        alignItems: "center",
+        background: "linear-gradient(135deg, #0f172a, #020617)",
+        px: 2,
+        backgroundAttachment: "fixed",
+        backgroundRepeat: "no-repeat",
+        backgroundSize: "cover",
       }}
     >
-      <Paper sx={{ p: 4, width: 350 }}>
-        <Typography variant="h6" textAlign="center" mb={2}>
-          Login
+      <Paper
+        elevation={6}
+        sx={{
+          p: { xs: 3, md: 4 },
+          width: "100%",
+          maxWidth: 350,
+          borderRadius: 3,
+          background: "#111827",
+        }}
+      >
+        {/* TITLE */}
+        <Typography
+          variant="h6"
+          textAlign="center"
+          sx={{ color: "#fff", fontWeight: "bold" }}
+        >
+          Welcome to
         </Typography>
 
+        <Typography
+          variant="h5"
+          textAlign="center"
+          sx={{ color: "#1976d2", fontWeight: "bold", mb: 2 }}
+        >
+          Insure365 Days
+        </Typography>
+
+        {/* EMAIL */}
         <TextField
           label="Email"
           fullWidth
@@ -57,22 +96,55 @@ export default function Login() {
           onChange={(e) =>
             setForm({ ...form, email: e.target.value })
           }
+          sx={{
+            input: { color: "#fff" },
+            label: { color: "#aaa" },
+            "& .MuiOutlinedInput-root": {
+              "& fieldset": { borderColor: "#555" },
+            },
+          }}
         />
 
+        {/* PASSWORD WITH EYE ICON */}
         <TextField
           label="Password"
-          type="password"
+          type={showPassword ? "text" : "password"}
           fullWidth
           margin="normal"
           onChange={(e) =>
             setForm({ ...form, password: e.target.value })
           }
+          sx={{
+            input: { color: "#fff" },
+            label: { color: "#aaa" },
+            "& .MuiOutlinedInput-root": {
+              "& fieldset": { borderColor: "#555" },
+            },
+          }}
+          InputProps={{
+            endAdornment: (
+              <InputAdornment position="end">
+                <IconButton
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  edge="end"
+                  sx={{ color: "#fff" }}
+                >
+                  {showPassword ? <VisibilityOff /> : <Visibility />}
+                </IconButton>
+              </InputAdornment>
+            ),
+          }}
         />
 
+        {/* BUTTON */}
         <Button
           variant="contained"
           fullWidth
-          sx={{ mt: 2 }}
+          sx={{
+            mt: 2,
+            py: 1.2,
+            fontWeight: "bold",
+          }}
           onClick={handleLogin}
         >
           Login
