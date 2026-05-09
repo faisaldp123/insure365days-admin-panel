@@ -24,9 +24,8 @@ export default function Dashboard() {
   const [dateFilter, setDateFilter] = useState("");
 
   const [page, setPage] = useState(1);
-  const rowsPerPage = 10; // ✅ 10 per page
+  const rowsPerPage = 10;
 
-  // Download modal
   const [downloadOpen, setDownloadOpen] = useState(false);
   const [dlFromDate, setDlFromDate] = useState("");
   const [dlToDate, setDlToDate] = useState("");
@@ -36,7 +35,6 @@ export default function Dashboard() {
     fetchLeads();
   }, []);
 
-  // ✅ Reset page when filters change
   useEffect(() => {
     setPage(1);
   }, [search, statusFilter, dateFilter]);
@@ -64,7 +62,6 @@ export default function Dashboard() {
     }
   };
 
-  // FILTER TABLE
   const filteredLeads = useMemo(() => {
     return leads.filter((lead) => {
       const matchSearch =
@@ -82,66 +79,12 @@ export default function Dashboard() {
     });
   }, [leads, search, statusFilter, dateFilter]);
 
-  // ✅ Pagination logic
   const totalPages = Math.max(1, Math.ceil(filteredLeads.length / rowsPerPage));
 
   const paginatedLeads = filteredLeads.slice(
     (page - 1) * rowsPerPage,
     page * rowsPerPage
   );
-
-  // DOWNLOAD FILTER
-  const getDownloadLeads = () => {
-    return leads.filter((lead) => {
-      const matchStatus = dlStatus ? lead.status === dlStatus : true;
-
-      const leadDate = new Date(lead.createdAt);
-      const from = dlFromDate ? new Date(dlFromDate + "T00:00:00") : null;
-      const to = dlToDate ? new Date(dlToDate + "T23:59:59") : null;
-
-      return (!from || leadDate >= from) && (!to || leadDate <= to) && matchStatus;
-    });
-  };
-
-  // DOWNLOAD FUNCTION
-  const handleDownload = () => {
-    const data = getDownloadLeads();
-
-    if (data.length === 0) {
-      alert("No leads found");
-      return;
-    }
-
-    const headers = ["Name", "Mobile", "Status", "Call", "Feedback", "Date"];
-
-    const rows = data.map((l) => [
-      l.name || "",
-      l.mobile || "",
-      l.status || "",
-      l.callStatus || "",
-      l.feedback || "",
-      l.createdAt ? new Date(l.createdAt).toLocaleString() : "",
-    ]);
-
-    const csv =
-      "\uFEFF" +
-      [headers, ...rows]
-        .map((r) => r.map((c) => `"${c}"`).join(","))
-        .join("\n");
-
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-
-    const fileName = `leads_${dlStatus || "all"}_${dlFromDate || "start"}_${dlToDate || "end"}.csv`;
-
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = fileName;
-    a.click();
-
-    URL.revokeObjectURL(url);
-    setDownloadOpen(false);
-  };
 
   const selectStyle = {
     color: "#fff",
@@ -161,34 +104,49 @@ export default function Dashboard() {
     <ProtectedRoute>
       <Navbar />
 
-      <Box sx={{ p: 3, mt: 5, background: "#000", minHeight: "100vh" }}>
+      <Box sx={{ p: { xs: 2, md: 3 }, mt: 5, background: "#000", minHeight: "100vh" }}>
 
         {/* HEADER */}
         <Box
           sx={{
             display: "flex",
+            flexDirection: { xs: "column", md: "row" },
             justifyContent: "space-between",
-            alignItems: "center",
-            flexWrap: "wrap",
+            alignItems: { xs: "stretch", md: "center" },
             gap: 2,
             mb: 3,
           }}
         >
-          {/* LEFT FILTERS */}
-          <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
+          {/* FILTERS */}
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: { xs: "column", sm: "row" },
+              gap: 2,
+              width: { xs: "100%", md: "auto" },
+            }}
+          >
             <TextField
               placeholder="Search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               size="small"
-              sx={{ input: { color: "#fff" } }}
+              fullWidth
+              sx={{
+                input: { color: "#fff" },
+                width: { md: "200px" },
+              }}
             />
 
             <Select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
               size="small"
-              sx={selectStyle}
+              fullWidth
+              sx={{
+                ...selectStyle,
+                width: { md: "180px" },
+              }}
             >
               {STATUS_OPTIONS.map((opt) => (
                 <MenuItem key={opt.value} value={opt.value}>
@@ -202,15 +160,23 @@ export default function Dashboard() {
               value={dateFilter}
               onChange={(e) => setDateFilter(e.target.value)}
               size="small"
-              sx={{ input: { color: "#fff" } }}
+              fullWidth
+              sx={{
+                input: { color: "#fff" },
+                width: { md: "180px" },
+              }}
             />
           </Box>
 
-          {/* RIGHT DOWNLOAD */}
+          {/* DOWNLOAD BUTTON */}
           <Button
             variant="contained"
             startIcon={<DownloadIcon />}
             onClick={() => setDownloadOpen(true)}
+            sx={{
+              width: { xs: "100%", md: "auto" },
+              whiteSpace: "nowrap",
+            }}
           >
             Download Leads
           </Button>
@@ -219,80 +185,83 @@ export default function Dashboard() {
         {message && <Alert>{message}</Alert>}
 
         {/* TABLE */}
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell sx={{ color: "#fff" }}>Name</TableCell>
-              <TableCell sx={{ color: "#fff" }}>Mobile</TableCell>
-              <TableCell sx={{ color: "#fff" }}>Status</TableCell>
-              <TableCell sx={{ color: "#fff" }}>Call</TableCell>
-              <TableCell sx={{ color: "#fff" }}>Feedback</TableCell>
-            </TableRow>
-          </TableHead>
-
-          <TableBody>
-            {paginatedLeads.map((lead) => (
-              <TableRow key={lead._id}>
-                <TableCell sx={{ color: "#fff" }}>{lead.name}</TableCell>
-                <TableCell sx={{ color: "#fff" }}>{lead.mobile}</TableCell>
-
-                <TableCell>
-                  <Select
-                    value={lead.status || "new"}
-                    onChange={(e) =>
-                      updateLead(lead._id, "status", e.target.value)
-                    }
-                    size="small"
-                    sx={selectStyle}
-                  >
-                    <MenuItem value="new">New</MenuItem>
-                    <MenuItem value="interested">Interested</MenuItem>
-                    <MenuItem value="not_interested">Not Interested</MenuItem>
-                    <MenuItem value="follow_up">Follow Up</MenuItem>
-                  </Select>
-                </TableCell>
-
-                <TableCell>
-                  <Select
-                    value={lead.callStatus || "pending"}
-                    onChange={(e) =>
-                      updateLead(lead._id, "callStatus", e.target.value)
-                    }
-                    size="small"
-                    sx={selectStyle}
-                  >
-                    <MenuItem value="pending">Pending</MenuItem>
-                    <MenuItem value="picked">Picked</MenuItem>
-                    <MenuItem value="not_picked">Not Picked</MenuItem>
-                  </Select>
-                </TableCell>
-
-                <TableCell>
-                  <TextField
-                    defaultValue={lead.feedback || ""}
-                    onBlur={(e) =>
-                      updateLead(lead._id, "feedback", e.target.value)
-                    }
-                    size="small"
-                    sx={{ input: { color: "#fff" } }}
-                  />
-                </TableCell>
+        <Box sx={{ overflowX: "auto" }}>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell sx={{ color: "#fff" }}>Name</TableCell>
+                <TableCell sx={{ color: "#fff" }}>Email</TableCell>
+                <TableCell sx={{ color: "#fff" }}>Mobile</TableCell>
+                <TableCell sx={{ color: "#fff" }}>Status</TableCell>
+                <TableCell sx={{ color: "#fff" }}>Call</TableCell>
+                <TableCell sx={{ color: "#fff" }}>Feedback</TableCell>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHead>
+
+            <TableBody>
+              {paginatedLeads.map((lead) => (
+                <TableRow key={lead._id}>
+                  <TableCell sx={{ color: "#fff" }}>{lead.name}</TableCell>
+                  <TableCell sx={{ color: "#fff" }}>{lead.email || "-"}</TableCell>
+                  <TableCell sx={{ color: "#fff" }}>{lead.mobile}</TableCell>
+
+                  <TableCell>
+                    <Select
+                      value={lead.status || "new"}
+                      onChange={(e) =>
+                        updateLead(lead._id, "status", e.target.value)
+                      }
+                      size="small"
+                      sx={selectStyle}
+                    >
+                      <MenuItem value="new">New</MenuItem>
+                      <MenuItem value="interested">Interested</MenuItem>
+                      <MenuItem value="not_interested">Not Interested</MenuItem>
+                      <MenuItem value="follow_up">Follow Up</MenuItem>
+                    </Select>
+                  </TableCell>
+
+                  <TableCell>
+                    <Select
+                      value={lead.callStatus || "pending"}
+                      onChange={(e) =>
+                        updateLead(lead._id, "callStatus", e.target.value)
+                      }
+                      size="small"
+                      sx={selectStyle}
+                    >
+                      <MenuItem value="pending">Pending</MenuItem>
+                      <MenuItem value="picked">Picked</MenuItem>
+                      <MenuItem value="not_picked">Not Picked</MenuItem>
+                    </Select>
+                  </TableCell>
+
+                  <TableCell>
+                    <TextField
+                      defaultValue={lead.feedback || ""}
+                      onBlur={(e) =>
+                        updateLead(lead._id, "feedback", e.target.value)
+                      }
+                      size="small"
+                      sx={{
+                        input: { color: "#fff" },
+                        "& .MuiOutlinedInput-root": {
+                          "& fieldset": { borderColor: "#555" },
+                          "&:hover fieldset": { borderColor: "#888" },
+                          "&.Mui-focused fieldset": { borderColor: "#1976d2" },
+                        },
+                      }}
+                    />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Box>
 
         {/* PAGINATION */}
-        <Box
-          sx={{
-            mt: 3,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: 1,
-          }}
-        >
-          <Typography sx={{ color: "#aaa" }}>
+        <Box sx={{ mt: 3, textAlign: "center" }}>
+          <Typography sx={{ color: "#aaa", mb: 1 }}>
             Showing {paginatedLeads.length} of {filteredLeads.length} leads
           </Typography>
 
@@ -300,51 +269,20 @@ export default function Dashboard() {
             count={totalPages}
             page={page}
             onChange={(e, value) => setPage(value)}
-            color="primary"
             shape="rounded"
+            sx={{
+              "& .MuiPaginationItem-root": {
+                color: "#fff",
+                border: "1px solid #555",
+              },
+              "& .Mui-selected": {
+                backgroundColor: "#1976d2",
+                color: "#fff",
+              },
+            }}
           />
         </Box>
       </Box>
-
-      {/* DOWNLOAD MODAL */}
-      <Dialog open={downloadOpen} onClose={() => setDownloadOpen(false)}>
-        <DialogTitle>
-          <FilterListIcon /> Download Leads
-        </DialogTitle>
-
-        <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          <Select value={dlStatus} onChange={(e) => setDlStatus(e.target.value)}>
-            {STATUS_OPTIONS.map((opt) => (
-              <MenuItem key={opt.value} value={opt.value}>
-                {opt.label}
-              </MenuItem>
-            ))}
-          </Select>
-
-          <TextField
-            type="date"
-            label="From"
-            value={dlFromDate}
-            onChange={(e) => setDlFromDate(e.target.value)}
-            InputLabelProps={{ shrink: true }}
-          />
-
-          <TextField
-            type="date"
-            label="To"
-            value={dlToDate}
-            onChange={(e) => setDlToDate(e.target.value)}
-            InputLabelProps={{ shrink: true }}
-          />
-        </DialogContent>
-
-        <DialogActions>
-          <Button onClick={() => setDownloadOpen(false)}>Cancel</Button>
-          <Button onClick={handleDownload} variant="contained">
-            Download
-          </Button>
-        </DialogActions>
-      </Dialog>
     </ProtectedRoute>
   );
 }
