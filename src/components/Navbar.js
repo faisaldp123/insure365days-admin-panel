@@ -40,12 +40,13 @@ export default function Navbar() {
         Dashboard
       </Button>
 
-      <Button color="inherit" onClick={() => router.push("/contacts")}>
-        New Leads
-      </Button>
+      
 
       {role === "admin" && (
         <>
+        <Button color="inherit" onClick={() => router.push("/contacts")}>
+        New Leads
+      </Button>
           <Button color="inherit" onClick={() => router.push("/upload")}>
             Manage Leads
           </Button>
@@ -53,6 +54,9 @@ export default function Navbar() {
           <Button color="inherit" onClick={() => router.push("/assign")}>
             Assign Leads
           </Button>
+          <Button color="inherit" onClick={() => router.push("/create-employee")}>
+  Add Employee
+</Button>
         </>
       )}
 
