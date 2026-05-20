@@ -6,8 +6,15 @@ import Navbar from "@/components/Navbar";
 import API from "@/lib/api";
 
 import {
-  Table, TableHead, TableRow, TableCell, TableBody,
-  TextField, Box, Pagination, Typography
+  Table,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableBody,
+  TextField,
+  Box,
+  Pagination,
+  Typography,
 } from "@mui/material";
 
 export default function ContactsPage() {
@@ -42,7 +49,8 @@ export default function ContactsPage() {
       const matchSearch =
         c.name?.toLowerCase().includes(search.toLowerCase()) ||
         c.mobile?.includes(search) ||
-        c.email?.toLowerCase().includes(search.toLowerCase());
+        c.email?.toLowerCase().includes(search.toLowerCase()) ||
+        c.insuranceType?.toLowerCase().includes(search.toLowerCase());
 
       const matchDate = dateFilter
         ? new Date(c.createdAt).toDateString() ===
@@ -53,7 +61,10 @@ export default function ContactsPage() {
     });
   }, [contacts, search, dateFilter]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredContacts.length / rowsPerPage));
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredContacts.length / rowsPerPage)
+  );
 
   const paginatedContacts = filteredContacts.slice(
     (page - 1) * rowsPerPage,
@@ -64,8 +75,14 @@ export default function ContactsPage() {
     <ProtectedRoute>
       <Navbar />
 
-      <Box sx={{ p: { xs: 2, md: 3 }, mt: 5, background: "#000", minHeight: "100vh" }}>
-
+      <Box
+        sx={{
+          p: { xs: 2, md: 3 },
+          mt: 5,
+          background: "#000",
+          minHeight: "100vh",
+        }}
+      >
         {/* HEADER */}
         <Box
           sx={{
@@ -117,20 +134,54 @@ export default function ContactsPage() {
             <TableHead>
               <TableRow>
                 <TableCell sx={{ color: "#fff" }}>Name</TableCell>
-                <TableCell sx={{ color: "#fff" }}>Email</TableCell>
-                <TableCell sx={{ color: "#fff" }}>Mobile</TableCell>
-                <TableCell sx={{ color: "#fff" }}>Message</TableCell>
-                <TableCell sx={{ color: "#fff" }}>Date</TableCell>
+
+                <TableCell sx={{ color: "#fff" }}>
+                  Email
+                </TableCell>
+
+                <TableCell sx={{ color: "#fff" }}>
+                  Mobile
+                </TableCell>
+
+                {/* ✅ NEW COLUMN */}
+                <TableCell sx={{ color: "#fff" }}>
+                  Insurance Type
+                </TableCell>
+
+                <TableCell sx={{ color: "#fff" }}>
+                  Message
+                </TableCell>
+
+                <TableCell sx={{ color: "#fff" }}>
+                  Date
+                </TableCell>
               </TableRow>
             </TableHead>
 
             <TableBody>
               {paginatedContacts.map((c) => (
                 <TableRow key={c._id}>
-                  <TableCell sx={{ color: "#fff" }}>{c.name}</TableCell>
-                  <TableCell sx={{ color: "#fff" }}>{c.email}</TableCell>
-                  <TableCell sx={{ color: "#fff" }}>{c.mobile}</TableCell>
-                  <TableCell sx={{ color: "#fff" }}>{c.message}</TableCell>
+                  <TableCell sx={{ color: "#fff" }}>
+                    {c.name}
+                  </TableCell>
+
+                  <TableCell sx={{ color: "#fff" }}>
+                    {c.email}
+                  </TableCell>
+
+                  <TableCell sx={{ color: "#fff" }}>
+                    {c.mobile}
+                  </TableCell>
+
+                  {/* ✅ SHOW INSURANCE TYPE */}
+                  <TableCell sx={{ color: "#fff" }}>
+                    {c.insuranceType || "-"}
+                  </TableCell>
+
+                  <TableCell sx={{ color: "#fff" }}>
+                    {c.message}
+                  </TableCell>
+
                   <TableCell sx={{ color: "#fff" }}>
                     {new Date(c.createdAt).toLocaleString()}
                   </TableCell>
@@ -151,7 +202,8 @@ export default function ContactsPage() {
           }}
         >
           <Typography sx={{ color: "#aaa" }}>
-            Showing {paginatedContacts.length} of {filteredContacts.length} contacts
+            Showing {paginatedContacts.length} of{" "}
+            {filteredContacts.length} contacts
           </Typography>
 
           <Pagination
