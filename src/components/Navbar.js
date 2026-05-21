@@ -14,6 +14,7 @@ import MenuIcon from "@mui/icons-material/Menu";
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+ import { jwtDecode } from "jwt-decode";
 
 export default function Navbar() {
   const router = useRouter();
@@ -22,10 +23,23 @@ export default function Navbar() {
   const [token, setToken] = useState(null);
   const [open, setOpen] = useState(false); // mobile menu
 
-  useEffect(() => {
-    setRole(localStorage.getItem("role"));
-    setToken(localStorage.getItem("token"));
-  }, []);
+ 
+
+useEffect(() => {
+  const token = localStorage.getItem("token");
+
+  if (token) {
+    try {
+      const decoded = jwtDecode(token);
+
+      setRole(decoded.role);
+      setToken(token);
+    } catch (err) {
+      console.error(err);
+      localStorage.clear();
+    }
+  }
+}, []);
 
   if (!token) return null;
 
