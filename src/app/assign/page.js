@@ -25,8 +25,8 @@ export default function Assign() {
   const [employees, setEmployees] = useState([]);
   const [selected, setSelected] = useState([]);
   const [employeeId, setEmployeeId] = useState("");
+  const [leadSource, setLeadSource] = useState("all");
 
-  // ✅ pagination
   const [page, setPage] = useState(1);
   const rowsPerPage = 10;
 
@@ -35,11 +35,28 @@ export default function Assign() {
   }, []);
 
   const fetchData = async () => {
-    const leadsRes = await API.get("/leads");
-    const usersRes = await API.get("/auth/users");
+    try {
+      const [leadsRes, contactsRes, usersRes] = await Promise.all([
+        API.get("/leads"),
+        API.get("/contact"),
+        API.get("/auth/users"),
+      ]);
 
-    setLeads(leadsRes.data);
-    setEmployees(usersRes.data);
+      const excelLeads = (leadsRes.data || []).map((lead) => ({
+        ...lead,
+        source: "excel",
+      }));
+
+      const contactLeads = (contactsRes.data || []).map((contact) => ({
+        ...contact,
+        source: "contact",
+      }));
+
+      setLeads([...excelLeads, ...contactLeads]);
+      setEmployees(usersRes.data || []);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const handleSelect = (id) => {
@@ -56,22 +73,67 @@ export default function Assign() {
       return;
     }
 
-    await API.post("/leads/assign", {
-      leadIds: selected,
-      employeeId,
-    });
+    try {
+      await API.post("/leads/assign", {
+        leadIds: selected,
+        employeeId,
+      });
 
-    alert("Assigned Successfully!");
-    setSelected([]);
+      alert("Assigned Successfully!");
+      setSelected([]);
+      fetchData();
+    } catch (err) {
+      console.error(err);
+      alert("Assignment failed");
+    }
   };
 
-  // ✅ pagination logic
-  const totalPages = Math.max(1, Math.ceil(leads.length / rowsPerPage));
+  const filteredLeads =
+    leadSource === "all"
+      ? leads
+      : leads.filter((lead) => lead.source === leadSource);
 
-  const paginatedLeads = leads.slice(
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredLeads.length / rowsPerPage)
+  );
+
+  const paginatedLeads = filteredLeads.slice(
     (page - 1) * rowsPerPage,
     page * rowsPerPage
   );
+
+  const selectStyle = {
+    width: { xs: "100%", md: "250px" },
+
+    "& .MuiInputLabel-root": {
+      color: "#fff",
+    },
+
+    "& .MuiInputLabel-root.Mui-focused": {
+      color: "#fff",
+    },
+
+    "& .MuiOutlinedInput-root": {
+      color: "#fff",
+
+      "& fieldset": {
+        borderColor: "#555",
+      },
+
+      "&:hover fieldset": {
+        borderColor: "#888",
+      },
+
+      "&.Mui-focused fieldset": {
+        borderColor: "#1976d2",
+      },
+    },
+
+    "& .MuiSvgIcon-root": {
+      color: "#fff",
+    },
+  };
 
   return (
     <ProtectedRoute>
@@ -85,46 +147,123 @@ export default function Assign() {
           minHeight: "100vh",
         }}
       >
-        <Typography variant="h6" sx={{ color: "#fff", mb: 2 }}>
+        <Typography
+          variant="h6"
+          sx={{ color: "#fff", mb: 3 }}
+        >
           Assign Leads to Employee
         </Typography>
 
-        {/* ✅ COMPACT EMPLOYEE SELECT */}
-        <TextField
-          select
-          label="Select Employee"
-          value={employeeId}
-          onChange={(e) => setEmployeeId(e.target.value)}
-          size="small" // ✅ makes it short
+        <Box
           sx={{
-            mb: 2,
-            width: { xs: "100%", md: "250px" }, // ✅ not too wide
-            input: { color: "#fff" },
-            label: { color: "#aaa" },
-            "& .MuiOutlinedInput-root": {
-              "& fieldset": { borderColor: "#555" },
-            },
-            "& .MuiSvgIcon-root": {
-              color: "#fff",
-            },
+            display: "flex",
+            gap: 3,
+            flexWrap: "wrap",
+            mb: 3,
           }}
         >
-          {employees.map((emp) => (
-            <MenuItem key={emp._id} value={emp._id}>
-              {emp.name}
-            </MenuItem>
-          ))}
-        </TextField>
+          <Box>
+            <Typography
+              sx={{
+                color: "#fff",
+                mb: 1,
+                fontSize: "14px",
+                fontWeight: 600,
+              }}
+            >
+              Assign To Employee
+            </Typography>
 
-        {/* TABLE */}
+            <TextField
+              select
+              label="Select Employee"
+              value={employeeId}
+              onChange={(e) =>
+                setEmployeeId(e.target.value)
+              }
+              size="small"
+              sx={selectStyle}
+            >
+              {employees.map((emp) => (
+                <MenuItem
+                  key={emp._id}
+                  value={emp._id}
+                >
+                  {emp.name}
+                </MenuItem>
+              ))}
+            </TextField>
+          </Box>
+
+          <Box>
+            <Typography
+              sx={{
+                color: "#fff",
+                mb: 1,
+                fontSize: "14px",
+                fontWeight: 600,
+              }}
+            >
+              Filter Lead Source
+            </Typography>
+
+            <TextField
+              select
+              label="Lead Source"
+              value={leadSource}
+              onChange={(e) => {
+                setLeadSource(e.target.value);
+                setPage(1);
+              }}
+              size="small"
+              sx={selectStyle}
+            >
+              <MenuItem value="all">
+                All Leads
+              </MenuItem>
+
+              <MenuItem value="excel">
+                Excel Leads
+              </MenuItem>
+
+              <MenuItem value="contact">
+                Contact Form Leads
+              </MenuItem>
+            </TextField>
+          </Box>
+        </Box>
+
         <Box sx={{ overflowX: "auto" }}>
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell sx={{ color: "#fff" }}>Select</TableCell>
-                <TableCell sx={{ color: "#fff" }}>Name</TableCell>
-                <TableCell sx={{ color: "#fff" }}>Email</TableCell>
-                <TableCell sx={{ color: "#fff" }}>Mobile</TableCell>
+                <TableCell sx={{ color: "#fff" }}>
+                  Select
+                </TableCell>
+
+                <TableCell sx={{ color: "#fff" }}>
+                  Name
+                </TableCell>
+
+                <TableCell sx={{ color: "#fff" }}>
+                  Email
+                </TableCell>
+
+                <TableCell sx={{ color: "#fff" }}>
+                  Mobile
+                </TableCell>
+
+                <TableCell sx={{ color: "#fff" }}>
+                  Insurance Type
+                </TableCell>
+
+                <TableCell sx={{ color: "#fff" }}>
+                  Message
+                </TableCell>
+
+                <TableCell sx={{ color: "#fff" }}>
+                  Source
+                </TableCell>
               </TableRow>
             </TableHead>
 
@@ -133,20 +272,50 @@ export default function Assign() {
                 <TableRow key={lead._id}>
                   <TableCell>
                     <Checkbox
-                      checked={selected.includes(lead._id)}
-                      onChange={() => handleSelect(lead._id)}
-                      sx={{ color: "#fff" }}
+                      checked={selected.includes(
+                        lead._id
+                      )}
+                      onChange={() =>
+                        handleSelect(lead._id)
+                      }
+                      sx={{
+                        color: "#fff",
+                      }}
                     />
                   </TableCell>
 
                   <TableCell sx={{ color: "#fff" }}>
                     {lead.name}
                   </TableCell>
+
                   <TableCell sx={{ color: "#fff" }}>
                     {lead.email}
                   </TableCell>
+
                   <TableCell sx={{ color: "#fff" }}>
                     {lead.mobile}
+                  </TableCell>
+
+                  <TableCell sx={{ color: "#fff" }}>
+                    {lead.insuranceType || "-"}
+                  </TableCell>
+
+                  <TableCell
+                    sx={{
+                      color: "#fff",
+                      maxWidth: "250px",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }}
+                  >
+                    {lead.message || "-"}
+                  </TableCell>
+
+                  <TableCell sx={{ color: "#fff" }}>
+                    {lead.source === "excel"
+                      ? "Excel"
+                      : "Contact Form"}
                   </TableCell>
                 </TableRow>
               ))}
@@ -154,19 +323,20 @@ export default function Assign() {
           </Table>
         </Box>
 
-        {/* BUTTON */}
         <Button
           variant="contained"
           onClick={assign}
           sx={{
             mt: 3,
-            width: { xs: "100%", md: "auto" },
+            width: {
+              xs: "100%",
+              md: "auto",
+            },
           }}
         >
           Assign Selected Leads
         </Button>
 
-        {/* ✅ PAGINATION */}
         <Box
           sx={{
             mt: 3,
@@ -177,7 +347,9 @@ export default function Assign() {
           <Pagination
             count={totalPages}
             page={page}
-            onChange={(e, value) => setPage(value)}
+            onChange={(e, value) =>
+              setPage(value)
+            }
             shape="rounded"
             sx={{
               "& .MuiPaginationItem-root": {
