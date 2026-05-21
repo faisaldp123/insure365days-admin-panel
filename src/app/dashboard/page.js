@@ -30,10 +30,12 @@ export default function Dashboard() {
   const [dlFromDate, setDlFromDate] = useState("");
   const [dlToDate, setDlToDate] = useState("");
   const [dlStatus, setDlStatus] = useState("");
+  const [role, setRole] = useState("");
 
   useEffect(() => {
-    fetchLeads();
-  }, []);
+  setRole(localStorage.getItem("role") || "");
+  fetchLeads();
+}, []);
 
   useEffect(() => {
     setPage(1);
@@ -169,17 +171,19 @@ export default function Dashboard() {
           </Box>
 
           {/* DOWNLOAD BUTTON */}
-          <Button
-            variant="contained"
-            startIcon={<DownloadIcon />}
-            onClick={() => setDownloadOpen(true)}
-            sx={{
-              width: { xs: "100%", md: "auto" },
-              whiteSpace: "nowrap",
-            }}
-          >
-            Download Leads
-          </Button>
+          {role === "admin" && (
+  <Button
+    variant="contained"
+    startIcon={<DownloadIcon />}
+    onClick={() => setDownloadOpen(true)}
+    sx={{
+      width: { xs: "100%", md: "auto" },
+      whiteSpace: "nowrap",
+    }}
+  >
+    Download Leads
+  </Button>
+)}
         </Box>
 
         {message && <Alert>{message}</Alert>}
@@ -192,6 +196,17 @@ export default function Dashboard() {
                 <TableCell sx={{ color: "#fff" }}>Name</TableCell>
                 <TableCell sx={{ color: "#fff" }}>Email</TableCell>
                 <TableCell sx={{ color: "#fff" }}>Mobile</TableCell>
+                <TableCell sx={{ color: "#fff" }}>
+  Insurance Type
+</TableCell>
+
+<TableCell sx={{ color: "#fff" }}>
+  Message
+</TableCell>
+
+<TableCell sx={{ color: "#fff" }}>
+  Source
+</TableCell>
                 <TableCell sx={{ color: "#fff" }}>Status</TableCell>
                 <TableCell sx={{ color: "#fff" }}>Call</TableCell>
                 <TableCell sx={{ color: "#fff" }}>Feedback</TableCell>
@@ -204,6 +219,19 @@ export default function Dashboard() {
                   <TableCell sx={{ color: "#fff" }}>{lead.name}</TableCell>
                   <TableCell sx={{ color: "#fff" }}>{lead.email || "-"}</TableCell>
                   <TableCell sx={{ color: "#fff" }}>{lead.mobile}</TableCell>
+                  <TableCell sx={{ color: "#fff" }}>
+  {lead.insuranceType || "-"}
+</TableCell>
+
+<TableCell sx={{ color: "#fff" }}>
+  {lead.message || "-"}
+</TableCell>
+
+<TableCell sx={{ color: "#fff" }}>
+  {lead.source === "contact"
+    ? "Contact Form"
+    : "Excel"}
+</TableCell>
 
                   <TableCell>
                     <Select
