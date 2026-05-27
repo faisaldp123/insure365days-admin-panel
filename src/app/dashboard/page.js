@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Navbar from "@/components/Navbar";
 import API from "@/lib/api";
+import DeleteIcon from "@mui/icons-material/Delete";
 
 import {
   Table, TableHead, TableRow, TableCell, TableBody,
@@ -63,6 +64,50 @@ export default function Dashboard() {
       console.error("Update failed");
     }
   };
+
+  const deleteLead = async (id) => {
+  const confirmDelete = window.confirm(
+    "Are you sure you want to delete this lead?"
+  );
+
+  if (!confirmDelete) return;
+
+  try {
+    await API.delete(`/leads/${id}`);
+
+    setLeads((prev) =>
+      prev.filter((lead) => lead._id !== id)
+    );
+
+    setMessage("Lead deleted successfully");
+  } catch (err) {
+    console.error(err);
+    setMessage("Delete failed");
+  }
+};
+
+const deleteAllLeads = async (type) => {
+  const confirmDelete = window.confirm(
+    `Are you sure you want to delete all ${type} leads?`
+  );
+
+  if (!confirmDelete) return;
+
+  try {
+    await API.delete("/leads/delete-all", {
+      data: { type },
+    });
+
+    fetchLeads();
+
+    setMessage(
+      `All ${type} leads deleted successfully`
+    );
+  } catch (err) {
+    console.error(err);
+    setMessage("Delete failed");
+  }
+};
 
   const filteredLeads = useMemo(() => {
     return leads.filter((lead) => {
@@ -171,18 +216,46 @@ export default function Dashboard() {
           </Box>
 
           {/* DOWNLOAD BUTTON */}
-          {role === "admin" && (
-  <Button
-    variant="contained"
-    startIcon={<DownloadIcon />}
-    onClick={() => setDownloadOpen(true)}
+        {role === "admin" && (
+  <Box
     sx={{
-      width: { xs: "100%", md: "auto" },
-      whiteSpace: "nowrap",
+      display: "flex",
+      flexWrap: "wrap",
+      gap: 1,
     }}
   >
-    Download Leads
-  </Button>
+    <Button
+      variant="contained"
+      color="error"
+      onClick={() => deleteAllLeads("excel")}
+    >
+      Delete Excel
+    </Button>
+
+    <Button
+      variant="contained"
+      color="error"
+      onClick={() => deleteAllLeads("contact")}
+    >
+      Delete Contact
+    </Button>
+
+    <Button
+      variant="contained"
+      color="error"
+      onClick={() => deleteAllLeads("all")}
+    >
+      Delete All
+    </Button>
+
+    <Button
+      variant="contained"
+      startIcon={<DownloadIcon />}
+      onClick={() => setDownloadOpen(true)}
+    >
+      Download Leads
+    </Button>
+  </Box>
 )}
         </Box>
 
@@ -210,6 +283,7 @@ export default function Dashboard() {
                 <TableCell sx={{ color: "#fff" }}>Status</TableCell>
                 <TableCell sx={{ color: "#fff" }}>Call</TableCell>
                 <TableCell sx={{ color: "#fff" }}>Feedback</TableCell>
+                <TableCell sx={{ color: "#fff" }}>Delete</TableCell>
               </TableRow>
             </TableHead>
 
@@ -281,6 +355,19 @@ export default function Dashboard() {
                       }}
                     />
                   </TableCell>
+                  <TableCell>
+  {role === "admin" && (
+    <Button
+      color="error"
+      variant="contained"
+      size="small"
+      startIcon={<DeleteIcon />}
+      onClick={() => deleteLead(lead._id)}
+    >
+      Delete
+    </Button>
+  )}
+</TableCell>
                 </TableRow>
               ))}
             </TableBody>
