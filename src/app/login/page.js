@@ -25,6 +25,8 @@ export default function Login() {
   });
 
   const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -35,6 +37,14 @@ export default function Login() {
   }, []);
 
   const handleLogin = async () => {
+    if (!form.email.trim() || !form.password) {
+      setError("Enter your email address and password.");
+      return;
+    }
+
+    setError("");
+    setLoading(true);
+
     try {
       const { data } = await API.post("/auth/login", form);
 
@@ -43,7 +53,12 @@ export default function Login() {
 
       router.push("/dashboard");
     } catch (err) {
-      alert("Login failed");
+      setError(
+        err.response?.data?.msg ||
+          "Unable to connect to the login service. Please try again."
+      );
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -146,9 +161,19 @@ export default function Login() {
             fontWeight: "bold",
           }}
           onClick={handleLogin}
+          disabled={loading}
         >
-          Login
+          {loading ? "Logging in..." : "Login"}
         </Button>
+
+        {error && (
+          <Typography
+            role="alert"
+            sx={{ color: "#fca5a5", fontSize: 14, mt: 1.5, textAlign: "center" }}
+          >
+            {error}
+          </Typography>
+        )}
       </Paper>
     </Box>
   );
