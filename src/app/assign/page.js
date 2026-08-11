@@ -262,6 +262,10 @@ export default function Assign() {
                 </TableCell>
 
                 <TableCell sx={{ color: "#fff" }}>
+                  Remarks
+                </TableCell>
+
+                <TableCell sx={{ color: "#fff" }}>
                   Source
                 </TableCell>
               </TableRow>
@@ -310,6 +314,18 @@ export default function Assign() {
                     }}
                   >
                     {lead.message || "-"}
+                  </TableCell>
+
+                  <TableCell
+                    sx={{
+                      color: "#fff",
+                      maxWidth: "250px",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }}
+                  >
+                    {lead.remarks || "-"}
                   </TableCell>
 
                   <TableCell sx={{ color: "#fff" }}>
